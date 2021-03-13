@@ -19,6 +19,7 @@ If the program  is stopped and restarted, the program cant request the D. server
 There is no control about disk space.
 
 # TODO tech
+  * Adds try/catch for some critical blocks to avoid zombie threads.
   * Compress market data : use tick data to compress the fat decimal serial. Usually, price/tick_size fits in a 32b int, sometimes 24.
   * Add interfaces to ease testing (almost  everywhere)
   * Implement WebSocketMgr with strategies to handle providers request limits
