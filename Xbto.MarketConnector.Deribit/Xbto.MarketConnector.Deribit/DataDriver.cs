@@ -77,7 +77,7 @@ namespace Xbto.MarketConnector.Deribit
                     {
                         foreach (var q in timeData)
                         {
-                            if (q.timestamp < _last.timestamp) // last one is older !
+                            if (_last!=null && q.timestamp < _last.timestamp) // last one is older !
                                 continue;
                             memstr.Write(q.Serialize());
                             _last = q;

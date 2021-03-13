@@ -9,10 +9,12 @@ namespace Xbto.MarketConnector.Deribit.Test
     {
         static void Main(string[] args)
         {
+            Console.WriteLine("=== BEGIN TESTS ===");
             TestSerialDecimal();
             TestSerialQuoteData();
             TestInstruFetcher();
             TestDataStore();
+            Console.WriteLine("=== END TESTS ===");
         }
         static void TestSerialDecimal()
         {
@@ -107,7 +109,7 @@ namespace Xbto.MarketConnector.Deribit.Test
                 {
                     timestamp =  DateTime.Now.ToDeribitTs()
                 };
-                Console.WriteLine(q.timestamp);
+                //Console.WriteLine(q.timestamp);
                 last_ts.Add(q.timestamp);
                 st.AddNextQuote(q);
                 Thread.Sleep(100);
