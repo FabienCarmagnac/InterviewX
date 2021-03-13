@@ -25,11 +25,10 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
 
         static void Main(string[] args)
         {
-            // probe the components (auto-test : 
 
             string user_url = DeribitInfo.deribit_url_test;
             int user_fetch_freq_ms = 60*60*1000; // refresh referential all hours, 
-            int user_waittime_in_ms = 10000; // wait before retry in case something is wrong
+            int user_waittime_in_ms = 10*000; // wait before retry in case something is wrong
             int user_maxTickers = 250; // max capacity of this component 
             int user_maxRequests = 5; // max ws request  in //
             int user_maxBufferSize = 10; // very small to see the effects
