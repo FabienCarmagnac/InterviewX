@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
+using System.Diagnostics;
 
 namespace Xbto.MarketConnector.Deribit
 {
-
     public enum InstruKind
     {
         future, option
@@ -42,6 +44,69 @@ namespace Xbto.MarketConnector.Deribit
         public decimal best_bid_amount;
         public decimal best_ask_price;
         public decimal best_ask_amount;
+
+        public const int SizeInBytes = 8 + 4 * Helper.DecimalSize;
+
+        public QuoteData()
+        {
+
+        }
+        public QuoteData(byte[] d)
+        {
+            int offset=0;
+            timestamp = BitConverter.ToInt64(d, offset);
+            offset += 8;
+            best_bid_price = d.ToDecimal(ref offset);
+            best_bid_amount = d.ToDecimal(ref offset);
+            best_ask_price = d.ToDecimal(ref offset);
+            best_ask_amount = d.ToDecimal(ref offset);
+
+        }
+        public QuoteData(byte[] d, ref int offset)
+        {
+            timestamp =BitConverter.ToInt64(d, offset);
+            offset += 8;
+            best_bid_price = d.ToDecimal(ref offset);
+            best_bid_amount = d.ToDecimal(ref offset);
+            best_ask_price = d.ToDecimal(ref offset);
+            best_ask_amount = d.ToDecimal(ref offset);
+
+        }
+
+        // dateTime.Now - this.timestamp, converted in ms
+        public long FromNowInMs()
+        {
+            return (DateTime.Now.ToDeribitTs() - timestamp) /1000;
+        }
+
+
+        public byte[] Serialize()
+        {
+            byte[] b = new byte[QuoteData.SizeInBytes];
+
+            int offset = 0;
+            Helper.AddBuffer(b, BitConverter.GetBytes(timestamp), ref offset);
+            Helper.AddBuffer(b, best_bid_price.SerialDecimal(), ref offset);
+            Helper.AddBuffer(b, best_bid_amount.SerialDecimal(), ref offset);
+            Helper.AddBuffer(b, best_ask_price.SerialDecimal(), ref offset);
+            Helper.AddBuffer(b, best_ask_amount.SerialDecimal(), ref offset);
+            Debug.Assert(offset == QuoteData.SizeInBytes);
+            return b;
+        }
+        void ToStream(Stream s)
+        {
+            s.Write(Serialize());
+        }
+        public static QuoteData FromStream(Stream s)
+        {
+            byte[] b = new byte[QuoteData.SizeInBytes];
+
+            if (s.Read(b, 0, QuoteData.SizeInBytes) == QuoteData.SizeInBytes)
+                return new QuoteData(b);
+
+            return null;
+
+        }
     }
 
 }

@@ -40,20 +40,32 @@ namespace Xbto.MarketConnector.Deribit
                 _ths.Add(th);
             }
         }
-        public void StopSync()
+        public void StopAsync()
         {
             Interlocked.Exchange(ref _stop, 1);
             _er.Set();
 
+        }
+        public void StopSync()
+        {
+            StopAsync();
+            WaitStop();
+        }
+        public void WaitStop()
+        { 
             foreach (var l in _l)
                 l.Stop();
 
             foreach (var th in _ths)
                 th.Join();
         }
-        public bool Wait(int ms)
+
+        /* */
+        public bool WaitAndContinue(int ms)
         {
-            return _er.WaitOne(ms);
+            if (StopRequested)
+                return false;
+            return !_er.WaitOne(ms);
         }
 
         public bool StopRequested => Interlocked.Read(ref _stop) == 1;

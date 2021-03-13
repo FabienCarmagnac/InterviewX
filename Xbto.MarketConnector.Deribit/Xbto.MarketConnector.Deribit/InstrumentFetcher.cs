@@ -159,7 +159,7 @@ namespace Xbto.MarketConnector.Deribit
                         // rearm
                         er.Reset(ProtocolVariableCur.Length);
 
-                    } while (_ctrler.Wait(_fetch_freq_ms));
+                    } while (_ctrler.WaitAndContinue(_fetch_freq_ms));
 
                 }
             }

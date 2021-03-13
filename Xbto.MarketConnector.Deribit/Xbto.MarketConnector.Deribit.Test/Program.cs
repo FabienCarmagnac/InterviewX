@@ -1,0 +1,131 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
+
+namespace Xbto.MarketConnector.Deribit.Test
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            TestSerialDecimal();
+            TestSerialQuoteData();
+            TestInstruFetcher();
+            TestDataStore();
+        }
+        static void TestSerialDecimal()
+        {
+            decimal d = 123456789123456789;
+
+            var d22 = new decimal(decimal.GetBits(d));
+            Debug.Assert(d22 == d);
+
+
+            byte[] b0 = d.SerialDecimal();
+
+            decimal d2 = b0.ToDecimal();
+
+            Debug.Assert(d2==d);
+
+        }
+
+
+
+        static void TestSerialQuoteData()
+        {
+            decimal d = 123456789M;
+
+            DateTime n = DateTime.Now;
+            var q = new QuoteData()
+            {
+                timestamp = n.ToDeribitTs(),
+                best_ask_amount = d+1,
+                best_ask_price = d+2,
+                best_bid_amount = d+3,
+                best_bid_price = d+4
+            };
+
+            var byt= q.Serialize();
+
+            var q2 = new QuoteData(byt);
+
+            Debug.Assert(q2.timestamp == q.timestamp, "timestamp");
+            Debug.Assert(q2.best_bid_price == q.best_bid_price, "best_bid_price");
+            Debug.Assert(q2.best_bid_amount == q.best_bid_amount, "best_bid_amount");
+            Debug.Assert(q2.best_bid_price == q.best_bid_price, "best_bid_price");
+            Debug.Assert(q2.best_bid_amount == q.best_bid_amount, "best_bid_amount");
+
+
+        }
+
+        static void TestInstruFetcher()
+        {
+
+            string user_url = DeribitInfo.deribit_url_test;
+            int user_fetch_freq_ms = 100*1000;  // 100s
+            int user_waittime_in_ms = 10000; // wait before retry in case something is wrong
+
+            AsyncController ctrler = new AsyncController();
+
+            var instruFetcher = new InstrumentFetcher(user_url, user_fetch_freq_ms, user_waittime_in_ms, ctrler);
+
+            int size = -1;
+            //Action<object, InstrumentDef[]> OnNewInstru = "
+
+            instruFetcher.NewInstru += (e, i) =>
+            {
+                size=i.Length;
+                ctrler.StopAsync();
+            }; 
+
+            ctrler.TakeControl(instruFetcher);
+            ctrler.StartAsync();
+
+            Debug.Assert(!ctrler.WaitAndContinue(5000));
+
+            Debug.Assert(size>10, "instrus");
+
+        }
+
+        static void TestDataStore()
+        {
+            AsyncController ctrler = new AsyncController();
+
+            var ds = new DataStore(ctrler, 1, 2, 100000);
+
+            ctrler.TakeControl(ds);
+            ctrler.StartAsync();
+
+            string instru = Guid.NewGuid().ToString();
+            var st = ds.GetOrCreateInstruTimeSeries(new InstrumentDef() { instrument_name = instru });
+
+            List<long> last_ts = new List<long>();
+            for (int i = 0; i < 30; ++i)
+            {
+                var q = new QuoteData()
+                {
+                    timestamp =  DateTime.Now.ToDeribitTs()
+                };
+                Console.WriteLine(q.timestamp);
+                last_ts.Add(q.timestamp);
+                st.AddNextQuote(q);
+                Thread.Sleep(100);
+            }
+
+            while (ds.QueueSize > 0)
+                Thread.Sleep(100);
+
+            ctrler.StopSync();
+
+            DataDriver dd = new DataDriver(instru, null);
+
+            var last = dd.GetLast();
+
+            Debug.Assert(last != null, "last is null");
+            Debug.Assert(last_ts.FindIndex(s => s==last.timestamp)>0 , "timestamp is not found");
+
+
+        }
+    }
+}

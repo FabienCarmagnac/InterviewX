@@ -11,10 +11,16 @@ using WebSocketSharp;
 namespace Xbto.MarketConnector.Deribit
 {
     /* 
-     * This class enqueues quote data per instrument and guarantee that at least 1 ws-request is getting data from deribit. 
-     * When instrument referential changes, a new websocket is created.
+     * This class requests data with several parallel ws, containing groups of instruments. 
+     * The data is provided by the ws threads' and are concentrated in the unique _incomingData queue (@TODO should be a pool to increase throughput).
+     * The RunSync thread dequeues _incomingData and pushes to the correct instrument queue. 
+     *   
+     * When instrument referential changes, the new whole of ws requests are runned, then the old ones are destroyed (so interruption of the stream).
+     * The _incomingData queue is not supposed to be sorted by timestamp among all instruments data.
+     * But it is sorted by timestamp for each instrument.
      * 
-     * With more time : study a WebSocket pool manager could be usefull to implement the deribit limits 
+     * 
+     * @SEE With more time : study a WebSocket pool manager could be usefull to implement the deribit limits 
      * see https://www.deribit.com/pages/information/rate-limits
      * 
      * 
@@ -28,14 +34,20 @@ namespace Xbto.MarketConnector.Deribit
         readonly string[] _wanted;
         int _maxTickers;
         int _maxRequests;
-        // no lock for this one, only one thread we never access
-        ImmutableDictionary<string, ByInstru> _instru;
+        DataStore _dataStore;
+        // no lock for this one, content cant be changed
+        ImmutableDictionary<string, InstruTimeSeries> _instru;
+        // know when to stop
         AsyncController _ctrler;
+        // instrument provider
         InstrumentFetcher _fetcher;
+        // @TODO implement WebSocketMgr
         List<WebSocket> _ws;
+        // stats
         List<long> _price_counter = new List<long>();
-        // this thread reads the _incomingData and redirects the object in the correct queue
+        // this thread 
 
+        #region bad com objects
         public class QuoteDataResponse
         {
             public class Ack
@@ -98,9 +110,18 @@ namespace Xbto.MarketConnector.Deribit
             }
         }
 
-        public MarketDataFetcher(string url, AsyncController ctrler, InstrumentFetcher fetcher, string[] wantedInstruments, int maxTickers = 50000, int maxRequests = 3)
+        #endregion
+
+        public event EventHandler<InstruTimeSeries[]> OnNewTs;
+
+
+        /*
+         * when the ws are created, each of 'maxRequests' requests will carry min(nbtickers,maxTickers)/ maxRequests instruments         
+         */
+        public MarketDataFetcher(string url, AsyncController ctrler, InstrumentFetcher fetcher, DataStore dataStore, string[] wantedInstruments, int maxTickers = 50000, int maxRequests = 3)
         {
-            _maxTickers= maxTickers;
+            _dataStore= dataStore;
+            _maxTickers = maxTickers;
             _maxRequests = maxRequests;
             _wanted = wantedInstruments == null ? new string[0] : wantedInstruments;
             _ctrler = ctrler;
@@ -112,14 +133,16 @@ namespace Xbto.MarketConnector.Deribit
 
 
         }
-
+        /*
+         * Reads the _incomingData and redirects the object in the correct queue
+         * */
         public void RunSync()
         {
             Console.WriteLine("MarketDataFetcher: starting");
             QuoteDataResponse.DataWithInstru d;
             int periodOfDisplayInSeconds = 5;
             
-            ByInstru bi;
+            InstruTimeSeries bi;
             long ticked = 0, dispatched=0;
             DateTime lastsnap=DateTime.Now;
             while (!_ctrler.StopRequested)
@@ -128,7 +151,8 @@ namespace Xbto.MarketConnector.Deribit
                 if ((lastsnap.AddSeconds(periodOfDisplayInSeconds) - now).Ticks<0)
                 {
                     lastsnap = now;
-                    Console.WriteLine($"MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", _price_counter.Select((s,i)=>$"#{i}:{s}")));
+                    var pc = _price_counter;
+                    Console.WriteLine($"MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", pc.Select((s,i)=>$"#{i}:{s}")));
                 }
 
                 if (_incomingData.TryDequeue(out d))
@@ -138,7 +162,7 @@ namespace Xbto.MarketConnector.Deribit
                     {
                         continue;
                     }
-                    bi.Add(d);
+                    bi.AddNextQuote(d);
                     ++dispatched;
                 }
                 else
@@ -152,7 +176,7 @@ namespace Xbto.MarketConnector.Deribit
 
         }
 
-        // terminate the websocket so a new one can be create later
+        // terminate the websockets so a new ones can be created later
         void KillWs()
         {
             if (_ws==null)
@@ -178,7 +202,8 @@ namespace Xbto.MarketConnector.Deribit
             _ws.Clear();
         }
 
-        void SwitchFeeder(ByInstru[] instru)
+        // reset all websockets
+        void SwitchFeeder(InstruTimeSeries[] instru)
         {
             long iid=-1;
             try
@@ -193,6 +218,8 @@ namespace Xbto.MarketConnector.Deribit
                     price_counter.Add(0);
                     var this_ws = instru.Take(step).ToArray();
                     instru = instru.Skip(step).ToArray();
+                    
+                    // use capture trick to inject data in the callbacks
                     int ix = iix++;
 
                     // prepare websocket
@@ -217,12 +244,12 @@ namespace Xbto.MarketConnector.Deribit
                                 QuoteDataResponse.Ack ack = JsonConvert.DeserializeObject<QuoteDataResponse.Ack>(e.Data);
                                 if (ack == null || ack.result==null)
                                 {
-                                    Console.WriteLine($"MarketDataFetcher: NOT AN ACK :\n{e.RawData}");
+                                    Console.WriteLine($"MarketDataFetcher: NOT AN ACK :\n{e.Data}");
                                     price_counter[ix] = -1;
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"MarketDataFetcher: # {id}/{ix} ack received {e.RawData}");
+                                    Console.WriteLine($"MarketDataFetcher: # {id}/{ix} ack received {e.Data}");
                                     price_counter[ix] = 0;
                                 }
                                 return;
@@ -231,7 +258,7 @@ namespace Xbto.MarketConnector.Deribit
                             _incomingData.Enqueue(obj.@params.data);
                             if(price_counter[ix]++==0)
                             {
-                                Console.WriteLine($"MarketDataFetcher: # {id}/{ix} first price received {e.RawData}");
+                                Console.WriteLine($"MarketDataFetcher: # {id}/{ix} first price received {e.Data}");
                             }
 
                             _waitData.Set();
@@ -274,46 +301,54 @@ namespace Xbto.MarketConnector.Deribit
             }
 
         }
-
+        /*
+         * change the instru set and call SwitchFeeder 
+         */
         void OnNewInstru(object sender, InstrumentDef[] e)
         {
-            var instru = _instru == null ? new Dictionary<string, ByInstru>() : new Dictionary<string, ByInstru>(_instru);
+            int filtered = 0;
+            var instru0 = _instru;
+            var instru = instru0 == null ? new Dictionary<string, InstruTimeSeries>() : new Dictionary<string, InstruTimeSeries>(instru0);
             foreach (var ee in e)
             {
-                Console.Write("MarketDataFetcher: new instru " + ee.instrument_name + " ... ");
+              //  Console.Write("MarketDataFetcher: new instru " + ee.instrument_name + " ... ");
                 if (!instru.ContainsKey(ee.instrument_name) && (_wanted.Length == 0 || _wanted.Contains(ee.instrument_name)))
                 {
-                    Console.WriteLine("added");
-                    instru.Add(ee.instrument_name, new ByInstru(ee));
+                //    Console.WriteLine("added");
+
+                    instru.Add(ee.instrument_name, _dataStore.GetOrCreateInstruTimeSeries(ee));
                     if (instru.Count >= _maxTickers)
                     {
-                        Console.Write($"MarketDataFetcher: maximum {_maxTickers} reached");
+                        Console.WriteLine($"MarketDataFetcher: maximum {_maxTickers} reached");
                         break;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("filtered");
+                    //Console.WriteLine("filtered");
+                    ++filtered;
                 }
             }
 
-            var bim = ImmutableDictionary.CreateBuilder<string, ByInstru>();
+            var bim = ImmutableDictionary.CreateBuilder<string, InstruTimeSeries>();
             bim.AddRange(instru.AsEnumerable());
-            _instru = bim.ToImmutable();
+            Console.Write($"MarketDataFetcher: has {bim.Count} instruments, {filtered} filtered" );
+
+            Interlocked.Exchange(ref _instru , bim.ToImmutable());
             SwitchFeeder(instru.Values.ToArray());
 
         }
         private void OnDelInstru(object sender, InstrumentDef[] e)
         {
-            var instru = new Dictionary<string, ByInstru>(_instru);
+            var instru = new Dictionary<string, InstruTimeSeries>(_instru);
             foreach (var ee in e)
             {
                 Console.WriteLine("MarketDataFetcher: instrument removed " + ee.instrument_name);
                 instru.Remove(ee.instrument_name);
             }
-            var bim = ImmutableDictionary.CreateBuilder<string, ByInstru>();
+            var bim = ImmutableDictionary.CreateBuilder<string, InstruTimeSeries>();
             bim.AddRange(instru.AsEnumerable());
-            _instru = bim.ToImmutable();
+            Interlocked.Exchange(ref _instru, bim.ToImmutable());
             SwitchFeeder(instru.Values.ToArray());
 
         }
