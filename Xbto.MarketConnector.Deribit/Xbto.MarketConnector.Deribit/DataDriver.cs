@@ -6,6 +6,11 @@ using System.IO;
 
 namespace Xbto.MarketConnector.Deribit
 {
+    /*
+     * This class handles read/writes QuoteData for 1 file.
+     * For 1 instrument, it is guaranteed that all IOs are done in the same thread.
+     * 
+     */
     public class DataDriver
     {
         readonly string _instruName;

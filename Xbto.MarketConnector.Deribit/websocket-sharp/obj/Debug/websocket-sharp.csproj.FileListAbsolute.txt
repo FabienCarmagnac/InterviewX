@@ -1,6 +1,0 @@
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\bin\Debug\websocket-sharp.dll
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\bin\Debug\websocket-sharp.pdb
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\obj\Debug\websocket-sharp.csprojAssemblyReference.cache
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\obj\Debug\websocket-sharp.csproj.CoreCompileInputs.cache
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\obj\Debug\websocket-sharp.dll
-C:\Users\Fabien\source\repos\Xbto.MarketConnector.Deribit\websocket-sharp\obj\Debug\websocket-sharp.pdb

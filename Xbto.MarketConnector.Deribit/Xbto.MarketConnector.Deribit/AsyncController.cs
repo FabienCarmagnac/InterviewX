@@ -14,12 +14,14 @@ namespace Xbto.MarketConnector.Deribit
 
 
     /**
-     * Start all services in they own threads
-     * Stop trigger the wait handle + call a Stop for all services, then join their threads
+     * Start all services in their own thread.
+     * Stop triggers the wait handle + call a Stop for all services, then join their threads.
+     * 
+     * No registration can be done during startup step.
      */
     public class AsyncController
     {
-        long _stop = 0;
+        long _stop =0;
         readonly AutoResetEvent _er = new AutoResetEvent(false);
         readonly List<IAsyncControllable> _l = new List<IAsyncControllable>();
         readonly List<Thread> _ths = new List<Thread>();
@@ -31,36 +33,48 @@ namespace Xbto.MarketConnector.Deribit
             }
         }
 
+        /* Main thread should call this after all IAsyncControllable are under control. */
         public void StartAsync()
         {
-            foreach(var l in _l)
+            lock (_l)
             {
-                var th = new Thread(() => l.RunSync()); 
-                th.Start();
-                _ths.Add(th);
+                foreach (var l in _l)
+                {
+                    var th = new Thread(() => l.RunSync());
+                    th.Start();
+                    _ths.Add(th);
+                }
             }
         }
+        /* StopAsync must be used in conjonction of WaitStop. */
         public void StopAsync()
         {
             Interlocked.Exchange(ref _stop, 1);
             _er.Set();
 
         }
+        /* Stop everything in a blocking way. */
         public void StopSync()
         {
             StopAsync();
             WaitStop();
         }
+        /* Must be called if the stop has been done with StopAsync */
         public void WaitStop()
-        { 
-            foreach (var l in _l)
-                l.Stop();
+        {
+            lock (_l)
+            {
+                foreach (var l in _l)
+                    l.Stop();
 
-            foreach (var th in _ths)
-                th.Join();
+                foreach (var th in _ths)
+                    th.Join();
+            }
         }
 
-        /* */
+        /* Typically used by services which must hold for some time but want to be notified when the stop has been requested.
+         * Returns false if stopping (whatever the timeout occurs)
+         */
         public bool WaitAndContinue(int ms)
         {
             if (StopRequested)
@@ -68,6 +82,7 @@ namespace Xbto.MarketConnector.Deribit
             return !_er.WaitOne(ms);
         }
 
+        /* Check if stopping */
         public bool StopRequested => Interlocked.Read(ref _stop) == 1;
 
 
