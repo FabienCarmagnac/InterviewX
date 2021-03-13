@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Concurrent;
+using System.Linq;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Xbto.MarketConnector.Deribit
 {
@@ -15,37 +14,42 @@ namespace Xbto.MarketConnector.Deribit
      */
     public class DataStore : IAsyncControllable
     {
-        AutoResetEvent _er = new AutoResetEvent(false);
-        AsyncController _stopper;
-        ConcurrentQueue<Action> _proc = new ConcurrentQueue<Action>();
-        List<InstruTimeSeries> _tis = new List<InstruTimeSeries>();
 
         public readonly int MaxBufferSize;
         public readonly int SaveHeadAfterMs;
 
-        private int _wait_time_before_flush_in_secs;
+        readonly int _wait_time_before_flush_in_secs;
+        readonly AsyncController _my_stopper = new AsyncController();
+        readonly List<Worker> _proc = new List<Worker>();
+        readonly List<InstruTimeSeries> _tis = new List<InstruTimeSeries>();
 
-        public DataStore(AsyncController stopper, int wait_time_before_flush_in_secs, int maxBufferSize, int saveHeadAfterMs)
+        readonly AsyncController _stopper;
+
+        public DataStore(AsyncController stopper, int nbWriteThreads, int wait_time_before_flush_in_secs, int maxBufferSize, int saveHeadAfterMs)
         {
             _stopper = stopper;
             MaxBufferSize  = maxBufferSize;
             SaveHeadAfterMs = saveHeadAfterMs;
             _wait_time_before_flush_in_secs = wait_time_before_flush_in_secs;
+
+            _proc = new List<Worker>(nbWriteThreads);
+            for (int i=0;i< nbWriteThreads;++i)
+            {
+                Worker w = new Worker(_my_stopper);
+                _my_stopper.TakeControl(w);
+                _proc.Add(w);
+            }
         }
 
-        public int QueueSize => _proc.Count;
+        public int QueueSize => _proc.Sum(s => s.Count);
 
         public void RunSync()
         {
-            Action a;
+            _my_stopper.StartAsync();
+
             DateTime next_check = DateTime.Now.AddSeconds(_wait_time_before_flush_in_secs);
             while (!_stopper.StopRequested) 
             {
-                if (_proc.TryDequeue(out a))
-                    a();
-                else
-                    _er.WaitOne(200);
-
                 if(next_check < DateTime.Now) // time to check if 
                 {
                     var t = _tis;
@@ -55,12 +59,13 @@ namespace Xbto.MarketConnector.Deribit
                     }
                     next_check = DateTime.Now.AddSeconds(_wait_time_before_flush_in_secs);
                 }
+                _stopper.WaitAndContinue(_wait_time_before_flush_in_secs);
             } 
         }
 
         public void Stop()
         {
-            _er.Set();
+            _my_stopper.StopSync();
         }
 
         public  InstruTimeSeries GetOrCreateInstruTimeSeries(InstrumentDef ee)
@@ -70,7 +75,7 @@ namespace Xbto.MarketConnector.Deribit
             {
                 ret = _tis.Find(s => s.InstruDef.instrument_name == ee.instrument_name);
                 if (ret == null) // 
-                    _tis.Add(ret=new InstruTimeSeries(ee, new DataDriver(ee.instrument_name, _proc), this));                
+                    _tis.Add(ret=new InstruTimeSeries(ee, new DataDriver(ee.instrument_name, _proc[_tis.Count%_proc.Count]), this));                
             }
             return ret;
 

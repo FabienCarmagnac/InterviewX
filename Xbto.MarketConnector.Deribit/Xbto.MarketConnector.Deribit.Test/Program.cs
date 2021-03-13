@@ -15,6 +15,7 @@ namespace Xbto.MarketConnector.Deribit.Test
             TestInstruFetcher();
             TestDataStore();
             Console.WriteLine("=== END TESTS ===");
+            Console.WriteLine("\nIf no ugly messages have been displayed above, tests can be considered OK\n");
         }
         static void TestSerialDecimal()
         {

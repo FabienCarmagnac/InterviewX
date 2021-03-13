@@ -14,10 +14,10 @@ namespace Xbto.MarketConnector.Deribit
     public class DataDriver
     {
         readonly string _instruName;
-        readonly ConcurrentQueue<Action> _proc;
+        readonly Worker _proc;
         private QuoteData _last;
 
-        public DataDriver(string instruName, ConcurrentQueue<Action> proc)
+        public DataDriver(string instruName, Worker proc)
         {
             _proc = proc;
             _instruName=instruName;
@@ -30,7 +30,7 @@ namespace Xbto.MarketConnector.Deribit
                 var offset = fic.Seek(0, SeekOrigin.End);
                 if (offset==0)
                 {
-                    Console.WriteLine($"DataDriver: {_instruName} has no data");
+                    Console.WriteLine($"DataDriver: {_instruName} is a new instrument");
                     // empty
                     return;
                 }
