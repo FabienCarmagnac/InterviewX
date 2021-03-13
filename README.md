@@ -9,7 +9,7 @@ Record market data coming from D. broker.
 The quotes are collected with sereral parallel webrequests.
 All the deserialized data is added to a single queue which is poped by a unique consumer thread.
 This consumer thread - only, and that's why it is unique - routes the data to a per-instrument queue.
-When a queue seems ready to be flushed (several crits), the IO thread removes the in-memory data after it got the confirmation the data has been written to the per-instrument file.
+When a queue seems ready to be flushed (several crits), the IO thread handling this instrument removes - all or part of - the in-memory data after it got the confirmation the data has been written to the per-instrument file.
 
 The data is store as binary-fixed-size object in file.
 
@@ -25,4 +25,5 @@ There is no control about disk space.
   * Implement WebSocketMgr with strategies to handle providers request limits
   * Robustify AsyncController : use Interlocked to figure out the precise step of the start or stop workflows.
   * Add disk space control + hysteresis-based notifications when disk is almost full
+  * Configure data store folder or even better : a file abstraction to handle several files per instrument (storage by day/month ?)
 
