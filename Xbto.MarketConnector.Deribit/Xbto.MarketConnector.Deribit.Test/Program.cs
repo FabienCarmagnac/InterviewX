@@ -18,6 +18,8 @@ namespace Xbto.MarketConnector.Deribit.Test
         }
         static void TestSerialDecimal()
         {
+            Console.WriteLine("=== BEGIN TESTS TestSerialDecimal ===");
+
             decimal d = 123456789123456789;
 
             var d22 = new decimal(decimal.GetBits(d));
@@ -29,6 +31,7 @@ namespace Xbto.MarketConnector.Deribit.Test
             decimal d2 = b0.ToDecimal();
 
             Debug.Assert(d2==d);
+            Console.WriteLine("=== END TESTS TestSerialDecimal ===");
 
         }
 
@@ -36,6 +39,7 @@ namespace Xbto.MarketConnector.Deribit.Test
 
         static void TestSerialQuoteData()
         {
+            Console.WriteLine("=== BEGIN TESTS TestSerialQuoteData ===");
             decimal d = 123456789M;
 
             DateTime n = DateTime.Now;
@@ -58,11 +62,13 @@ namespace Xbto.MarketConnector.Deribit.Test
             Debug.Assert(q2.best_bid_price == q.best_bid_price, "best_bid_price");
             Debug.Assert(q2.best_bid_amount == q.best_bid_amount, "best_bid_amount");
 
+            Console.WriteLine("=== END TESTS TestSerialQuoteData ===");
 
         }
 
         static void TestInstruFetcher()
         {
+            Console.WriteLine("=== BEGIN TESTS TestInstruFetcher ===");
 
             string user_url = DeribitInfo.deribit_url_test;
             int user_fetch_freq_ms = 100*1000;  // 100s
@@ -84,17 +90,19 @@ namespace Xbto.MarketConnector.Deribit.Test
             ctrler.TakeControl(instruFetcher);
             ctrler.StartAsync();
 
-            Debug.Assert(!ctrler.WaitAndContinue(5000));
+            ctrler.WaitStop();
 
             Debug.Assert(size>10, "instrus");
+            Console.WriteLine("=== END TESTS TestInstruFetcher ===");
 
         }
 
         static void TestDataStore()
         {
+            Console.WriteLine("=== BEGIN TESTS TestDataStore ===");
             AsyncController ctrler = new AsyncController();
 
-            var ds = new DataStore(ctrler, 1, 2, 100000);
+            var ds = new DataStore(ctrler, 1, 1, 2, 100000);
 
             ctrler.TakeControl(ds);
             ctrler.StartAsync();
@@ -126,6 +134,7 @@ namespace Xbto.MarketConnector.Deribit.Test
 
             Debug.Assert(last != null, "last is null");
             Debug.Assert(last_ts.FindIndex(s => s==last.timestamp)>0 , "timestamp is not found");
+            Console.WriteLine("=== END TESTS TestDataStore ===");
 
 
         }
