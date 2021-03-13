@@ -15,8 +15,8 @@ The data is store as binary-fixed-size object in file.
 
 # Limitations 
 
-If the program  is stopped and restarted, the program cant request the D. servers to fill the market data missing during down-time.
-There is no control about disk space.
+  * If the program  is stopped and restarted, the program cant request the D. servers to fill the market data missing during down-time. The D. API does not support it.
+  * There is no control about disk space.
 
 # TODO tech
   * Adds try/catch for some critical blocks to avoid zombie threads.
