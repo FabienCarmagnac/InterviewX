@@ -29,7 +29,7 @@ namespace Xbto.MarketConnector.Deribit
                 InternalCheckIfNeedFlush();
             }
         }
-        
+
         void InternalCheckIfNeedFlush()
         {
             if (_last == null || _pendingStore || TimeData.Count==0)
@@ -63,7 +63,7 @@ namespace Xbto.MarketConnector.Deribit
             {
                 TimeData.Add(d);
                 _last = d;
-                CheckIfNeedFlush();
+                InternalCheckIfNeedFlush();
             }
 
         }
