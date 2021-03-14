@@ -18,7 +18,16 @@ The data is store as binary-fixed-size object in file.
  * Url is /HistoricalData
  * To subscribe, send this :
  
-
+{
+  "jsonrpc": "2.0",
+  "id": 152,
+  "method": "public/get_historical_data",
+  "params": {
+    "instrument_name": "BTC_PERPETUAL",
+    "begin_timestamp": 1615634726030296,
+    "end_timestamp": 1615721186053261
+  }
+}
 
 
 
