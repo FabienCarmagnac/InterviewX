@@ -41,9 +41,9 @@ namespace Xbto.MarketConnector.Deribit
         // instrument provider
         InstrumentFetcher _fetcher;
         // @TODO implement WebSocketMgr
-        List<WebSocket> _ws;
+        ImmutableList<WebSocket> _ws;
         // stats
-        List<long> _price_counter = new List<long>();
+        long[] _price_counter;
         // this thread 
 
         #region bad com objects
@@ -105,14 +105,11 @@ namespace Xbto.MarketConnector.Deribit
                 public string method = "public/subscribe";
                 public Params @params = new Params();
                 public string jsonrpc = "2.0";
-                public int id=0;
+                public long id=0;
             }
         }
 
         #endregion
-
-        public event EventHandler<InstruTimeSeries[]> OnNewTs;
-
 
         /*
          * when the ws are created, each of 'maxRequests' requests will carry min(nbtickers,maxTickers)/ maxRequests instruments         
@@ -143,15 +140,21 @@ namespace Xbto.MarketConnector.Deribit
             
             InstruTimeSeries bi;
             long ticked = 0, dispatched=0;
-            DateTime lastsnap=DateTime.Now;
+            DateTime lastsnap=DateTime.UtcNow;
             while (!_ctrler.StopRequested)
             {
-                var now = DateTime.Now;
+                var now = DateTime.UtcNow;
                 if ((lastsnap.AddSeconds(periodOfDisplayInSeconds) - now).Ticks<0)
                 {
                     lastsnap = now;
                     var pc = _price_counter;
-                    Console.WriteLine($"MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", pc.Select((s,i)=>$"#{i}:{s}")));
+                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", pc.Select((s,i)=>$"#{i}:{s}")));
+
+                    foreach(var ws in _ws)
+                    {
+                        if (ws.IsAlive) // avoid timeoout
+                            ws.Ping();
+                    }
                 }
 
                 if (_incomingData.TryDequeue(out d))
@@ -160,6 +163,10 @@ namespace Xbto.MarketConnector.Deribit
                     if (!_instru.TryGetValue(d.instrument_name, out bi))
                     {
                         continue;
+                    }
+                    if(bi.Total==0)
+                    {
+                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: INSTRU {d.instrument_name} : first price [{d.best_bid_price} | {d.best_ask_price}]");
                     }
                     bi.AddNextQuote(d);
                     ++dispatched;
@@ -207,14 +214,13 @@ namespace Xbto.MarketConnector.Deribit
             long iid=-1;
             try
             {
-                List<WebSocket> wss = new List<WebSocket>(_maxRequests);
+                var wss = ImmutableList.CreateBuilder<WebSocket>();
                 Console.WriteLine("MarketDataFetcher: sending quote request for " + instru.Length + " instrus");
                 int step = instru.Length / _maxRequests + (instru.Length % _maxRequests == 0 ? 0 : 1);
                 int iix = 0;
-                List<long> price_counter = new List<long>();
+                long[] price_counter = new long[_maxRequests];
                 while (instru.Length != 0)
                 {
-                    price_counter.Add(0);
                     var this_ws = instru.Take(step).ToArray();
                     instru = instru.Skip(step).ToArray();
                     
@@ -243,59 +249,61 @@ namespace Xbto.MarketConnector.Deribit
                                 QuoteDataResponse.Ack ack = JsonConvert.DeserializeObject<QuoteDataResponse.Ack>(e.Data);
                                 if (ack == null || ack.result==null)
                                 {
-                                    Console.WriteLine($"MarketDataFetcher: NOT AN ACK :\n{e.Data}");
+                                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: ws {ix} NOT AN ACK :\n{e.Data}");
                                     price_counter[ix] = -1;
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"MarketDataFetcher: # {id}/{ix} ack received {e.Data}");
+                                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} ack received with {ack.result.Count} instrus confirmed");
                                     price_counter[ix] = 0;
                                 }
                                 return;
 
                             }
+                            
+                            //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # quote ts={obj.@params.data.timestamp}");
+
                             _incomingData.Enqueue(obj.@params.data);
                             if(price_counter[ix]++==0)
                             {
-                                Console.WriteLine($"MarketDataFetcher: # {id}/{ix} first price received {e.Data}");
+                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} first price received");
                             }
 
                             _waitData.Set();
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"MarketDataFetcher: # {id}/{ix} except " + ex.ToString());
+                            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} except " + ex.ToString());
                         }
                     };
                     ws.OnError += (sender, e) =>
                     {
-                        Console.WriteLine($"MarketDataFetcher: # {id}/{ix} error " + e.ToString());
+                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} error " + e.ToString());
                     };
                     ws.OnOpen += (sender, e) =>
                     {
-                        Console.WriteLine($"MarketDataFetcher: # {id}/{ix} open");
+                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} open");
                     };
                     ws.OnClose += (sendr, e) =>
                     {
-                        Console.WriteLine($"MarketDataFetcher: # {id}/{ix} closed");
+                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} closed");
                     };
 
                     ws.Connect();
-
-                    Console.WriteLine($"MarketDataFetcher: # {id}/{ix} msg " + strmsg);
+                    //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} msg " + strmsg);
 
                     ws.Send(strmsg);
-                    Console.WriteLine($"MarketDataFetcher: # {id}/{ix} quote sent");
+                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} quote sent");
                 }//while
 
                 KillWs();
 
                 _price_counter = price_counter;
-                _ws = wss;
+                _ws = wss.ToImmutable();
             }
             catch (Exception e)
             {
-                Console.WriteLine($"MarketDataFetcher: # {iid} SwitchFeeder EXCEPT " + e.ToString());
+                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {iid} SwitchFeeder EXCEPT " + e.ToString());
 
             }
 
@@ -318,7 +326,7 @@ namespace Xbto.MarketConnector.Deribit
                     instru.Add(ee.instrument_name, _dataStore.GetOrCreateInstruTimeSeries(ee));
                     if (instru.Count >= _maxTickers)
                     {
-                        Console.WriteLine($"MarketDataFetcher: maximum {_maxTickers} reached");
+                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: maximum {_maxTickers} reached");
                         break;
                     }
                 }

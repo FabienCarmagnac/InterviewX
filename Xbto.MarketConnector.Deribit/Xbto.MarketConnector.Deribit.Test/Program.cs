@@ -10,6 +10,7 @@ namespace Xbto.MarketConnector.Deribit.Test
         static void Main(string[] args)
         {
             Console.WriteLine("=== BEGIN TESTS ===");
+            TestDateTime();
             TestSerialDecimal();
             TestSerialQuoteData();
             TestInstruFetcher();
@@ -43,7 +44,7 @@ namespace Xbto.MarketConnector.Deribit.Test
             Console.WriteLine("=== BEGIN TESTS TestSerialQuoteData ===");
             decimal d = 123456789M;
 
-            DateTime n = DateTime.Now;
+            DateTime n = DateTime.UtcNow;
             var q = new QuoteData()
             {
                 timestamp = n.ToDeribitTs(),
@@ -53,7 +54,7 @@ namespace Xbto.MarketConnector.Deribit.Test
                 best_bid_price = d+4
             };
 
-            var byt= q.Serialize();
+            var byt= q.BinSerialize();
 
             var q2 = new QuoteData(byt);
 
@@ -64,7 +65,27 @@ namespace Xbto.MarketConnector.Deribit.Test
             Debug.Assert(q2.best_bid_amount == q.best_bid_amount, "best_bid_amount");
 
             Console.WriteLine("=== END TESTS TestSerialQuoteData ===");
+        
+        }
 
+
+        static void TestDateTime()
+        {
+            Console.WriteLine("=== BEGIN TESTS TestDateTime ===");
+            long dt = 1615745488608;
+            var d = dt.ToDateTime();
+            Debug.Assert(d.Year == 2021);
+            Debug.Assert(d.Month== 3);
+
+            long dt2 = d.ToDeribitTs();
+            Debug.Assert(dt==dt2);
+
+            //
+
+            long ll = DateTime.UtcNow.ToDeribitTs();
+
+
+            Console.WriteLine("=== ENd TESTS TestDateTime ===");
         }
 
         static void TestInstruFetcher()
@@ -116,7 +137,7 @@ namespace Xbto.MarketConnector.Deribit.Test
             {
                 var q = new QuoteData()
                 {
-                    timestamp =  DateTime.Now.ToDeribitTs()
+                    timestamp =  DateTime.UtcNow.ToDeribitTs()
                 };
                 //Console.WriteLine(q.timestamp);
                 last_ts.Add(q.timestamp);

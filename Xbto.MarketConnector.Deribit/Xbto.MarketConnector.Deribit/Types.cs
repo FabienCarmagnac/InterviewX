@@ -76,11 +76,11 @@ namespace Xbto.MarketConnector.Deribit
         // dateTime.Now - this.timestamp, converted in ms
         public long FromNowInMs()
         {
-            return (DateTime.Now.ToDeribitTs() - timestamp) /1000;
+            return (DateTime.UtcNow.ToDeribitTs() - timestamp);
         }
 
 
-        public byte[] Serialize()
+        public byte[] BinSerialize()
         {
             byte[] b = new byte[QuoteData.SizeInBytes];
 
@@ -95,9 +95,9 @@ namespace Xbto.MarketConnector.Deribit
         }
         void ToStream(Stream s)
         {
-            s.Write(Serialize());
+            s.Write(BinSerialize());
         }
-        public static QuoteData FromStream(Stream s)
+        public static QuoteData FromBinStream(Stream s)
         {
             byte[] b = new byte[QuoteData.SizeInBytes];
 

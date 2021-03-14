@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -10,9 +11,13 @@ namespace Xbto.MarketConnector.Deribit
 
         public readonly InstrumentDef InstruDef;
         QuoteData _last;
-        DataDriver _dd;
-        private readonly DataStore _ds;
-        private bool _pendingStore;
+        readonly DataDriver _dd;
+        readonly DataStore _ds;
+        bool _pendingStore;
+        long _total = 0;
+
+        public long Total => _total;
+        public event Action<QuoteData> OnNewQuoteData;
 
         public InstruTimeSeries(InstrumentDef def, DataDriver dd, DataStore ds)
         {
@@ -42,13 +47,45 @@ namespace Xbto.MarketConnector.Deribit
                 return;
             }
 
-            if (_last.FromNowInMs() < _ds.SaveHeadAfterMs) // very illiquid product, save all
+            if (_ds.SaveHeadAfterMs < _last.FromNowInMs() ) // very illiquid product, save all
             {
                 _pendingStore = true;
                 _dd.SendToStore(TimeData.GetRange(0, TimeData.Count), this);
                 return;
             }
 
+        }
+        public void GetSnapshot(long begin, long end, Action<List<QuoteData>> f)
+        {
+
+            lock (TimeData)
+            {
+                if (TimeData.Count == 0)
+                    Console.WriteLine($"GetSnapshot: 0 elem");
+                else
+                    Console.WriteLine($"GetSnapshot: TimeData {TimeData[0]} => {TimeData.Last()}");
+
+                int bx =-1, ex=-1;
+                for(int i=0;i<TimeData.Count;++i)
+                {
+                    if (bx == -1 && TimeData[i].timestamp >= begin)
+                        bx = i;
+                    if (TimeData[i].timestamp > end)
+                    {
+                        ex = i;
+                        break;
+                    }
+                }
+                if (bx == -1)
+                {
+                    f(new List<QuoteData>());
+                    return;
+                }
+
+                if (ex == -1) ex = TimeData.Count;
+                
+                f(TimeData.GetRange(bx, ex-bx));
+            }
         }
         // will be added only if the 
         public void AddNextQuote(QuoteData d)
@@ -63,9 +100,15 @@ namespace Xbto.MarketConnector.Deribit
             {
                 TimeData.Add(d);
                 _last = d;
+                ++_total;
                 InternalCheckIfNeedFlush();
             }
+            OnNewQuoteData?.Invoke(d);
+        }
 
+        internal IEnumerable<QuoteData> GetHistoData(long begin, long end)
+        {
+            return _dd.GetHistoData(begin, end);
         }
 
         public void DataHaveBeenStoredTillIndex(int lastObsoleteIndex)

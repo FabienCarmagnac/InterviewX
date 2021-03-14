@@ -29,10 +29,19 @@ namespace Xbto.MarketConnector.Deribit
             Action a;
             while (!_stopper.StopRequested)
             {
-                if (_q.TryDequeue(out a))
-                    a();
-                else
-                    _er.WaitOne(1000);
+                try
+                {
+                    while (!_stopper.StopRequested)
+                    {
+                        if (_q.TryDequeue(out a))
+                            a();
+                        else
+                            _er.WaitOne(1000);
+                    }
+                }catch(Exception e)
+                {
+                    Console.WriteLine("Worker EXCEPT (but still alive) " + e);
+                }
             }
         }
 

@@ -12,11 +12,11 @@ namespace Xbto.MarketConnector.Deribit
         public static DateTime ToDateTime(this long deribitTs)
         {
             // Unix timestamp is seconds past epoch
-            return DtDateTime.AddMilliseconds(deribitTs / 1000);
+            return DtDateTime.AddMilliseconds(deribitTs);
         }
         public static long ToDeribitTs(this DateTime d)
         {
-            return Convert.ToInt64((d - DtDateTime).TotalMilliseconds * 1000);
+            return Convert.ToInt64((d - DtDateTime).TotalMilliseconds);
         }
 
         public static void AddBuffer(byte[] dst, byte[] src, ref int dstOffset)

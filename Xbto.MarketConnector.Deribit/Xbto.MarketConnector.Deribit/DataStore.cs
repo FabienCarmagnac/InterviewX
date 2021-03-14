@@ -47,30 +47,33 @@ namespace Xbto.MarketConnector.Deribit
         {
             _my_stopper.StartAsync();
 
-            DateTime next_check = DateTime.Now.AddSeconds(_wait_time_before_flush_in_secs);
-            while (!_stopper.StopRequested) 
+            while (_stopper.WaitAndContinue(_wait_time_before_flush_in_secs))
             {
-                if(next_check < DateTime.Now) // time to check if 
+                lock (_tis)
                 {
-                    var t = _tis;
-                    foreach(var tis in t)
+                    foreach (var tis in _tis)
                     {
                         tis.CheckIfNeedFlush();
                     }
-                    next_check = DateTime.Now.AddSeconds(_wait_time_before_flush_in_secs);
                 }
-                _stopper.WaitAndContinue(_wait_time_before_flush_in_secs);
-            } 
+            }
         }
 
         public void Stop()
         {
             _my_stopper.StopSync();
         }
-
-        public  InstruTimeSeries GetOrCreateInstruTimeSeries(InstrumentDef ee)
+        public InstruTimeSeries GetInstruTimeSeries(string instru_name)
         {
-            InstruTimeSeries ret;
+            lock (_tis)
+            {
+                return _tis.Find(s => s.InstruDef.instrument_name == instru_name);
+            }
+        }
+        
+        public InstruTimeSeries GetOrCreateInstruTimeSeries(InstrumentDef ee)
+        {
+            InstruTimeSeries ret=null;
             lock (_tis)
             {
                 ret = _tis.Find(s => s.InstruDef.instrument_name == ee.instrument_name);
