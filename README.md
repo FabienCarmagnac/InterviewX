@@ -96,4 +96,6 @@ Then, the client should receive an ack message:
   * Robustify AsyncController : use Interlocked to figure out the precise step of the start or stop workflows.
   * Add disk space control + hysteresis-based notifications when disk is almost full
   * Configure data store folder or even better : a file abstraction to handle several files per instrument (storage by day/month ?)
+  * Speedup the search for the first QuoteData to be sent
+
 
