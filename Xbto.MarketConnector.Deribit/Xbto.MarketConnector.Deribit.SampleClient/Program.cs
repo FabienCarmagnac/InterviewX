@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using WebSocketSharp;
 
@@ -33,7 +34,7 @@ namespace Xbto.MarketConnector.Deribit.SampleClient
                 long uid = 0;
 
                 QuoteData last=null;
-                 
+                StrongBox<bool> is_rt = new StrongBox<bool>(false);
                 ws.OnMessage += (sender, e) =>
                 {
 
@@ -74,8 +75,13 @@ namespace Xbto.MarketConnector.Deribit.SampleClient
 
                             last = t;
 
-                            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} Latency={last.timestamp - DateTime.UtcNow.ToDeribitTs()}ms");
+                            //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} Latency={last.timestamp - DateTime.UtcNow.ToDeribitTs()}ms");
 
+                            if(last.timestamp - DateTime.UtcNow.ToDeribitTs()>0 && is_rt.Value==false)
+                            {
+                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} I think we are RT now");
+                                is_rt.Value = true;
+                            }
                             ++uid;
                         }
 

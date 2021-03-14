@@ -127,14 +127,15 @@ namespace Xbto.MarketConnector.Deribit
             {
 
                 // send the file data. begin constraints is guaranteed
-                long last_ts = SendQuoteData(h.id, 0, iis.GetHistoData(begin, end)); ///last_ts is 0 here because we know the data has been filtered
-                if (last_ts < 0)
-                    last_ts = begin;
-                
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : histo data reached {last_ts }");
+                long sent = 0;
+                long last_ts = begin;
+                long first = 0;
+
+                SendQuoteData(h.id, 0, iis.GetHistoData(begin, end), out first, ref last_ts, ref sent); ///last_ts is 0 here because we know the data has been filtered                
+                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : histo data sent {sent}, {first} => {last_ts}");
                 // now send the buffer : may be overlap with file 
-                last_ts = SendQuoteData(h.id, last_ts, buffer);
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : buffer data reached {last_ts }");
+                SendQuoteData(h.id, last_ts, buffer, out first, ref last_ts, ref sent);
+                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : buffer data reached {sent}, {first} => {last_ts}");
 
                 // now send the RT container. can overlap !
                 Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT begins");
@@ -152,6 +153,7 @@ namespace Xbto.MarketConnector.Deribit
                         var payload = new HistoricalDataPayload() { id = h.id };
                         payload.@params.quotes.Add(qd);
                         Send(JsonConvert.SerializeObject(payload));
+                        ++sent;
                     }
                     else
                         _er.WaitOne(500);
@@ -163,7 +165,7 @@ namespace Xbto.MarketConnector.Deribit
                         break;
                     }
                 }
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT ends");
+                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT ends, total {sent}");
 
             }
             catch (Exception ex)
@@ -179,38 +181,35 @@ namespace Xbto.MarketConnector.Deribit
 
 
         }
-        long SendQuoteData(long id, long last_ts, IEnumerable<QuoteData> qds)
+        void SendQuoteData(long id, long last_ts, IEnumerable<QuoteData> qds, out long first_sent, ref long last_sent, ref long sent)
         {
+            first_sent = -1;
             HistoricalDataPayload payload = null;
-            long ts = -1;
-            long qts=-1;
             foreach (var qd in qds)
             {
-                Debug.Assert(qts < qd.timestamp);
-
-                qts = qd.timestamp;
-
-                if (last_ts > qts)
+                if (last_sent > qd.timestamp)
                     continue;
 
                 if (payload == null)
+                {
                     payload = new HistoricalDataPayload() { id = id };
+                    first_sent = qd.timestamp;
+                }
 
                 payload.@params.quotes.Add(qd);
-                ts = qts;
+                last_sent= qd.timestamp;
+                ++sent;
 
                 if (payload.@params.quotes.Count == _root.MaxNbQuotesPerMessage)
                 {
                     Send(JsonConvert.SerializeObject(payload));
-                    payload = null;
+                    payload = new HistoricalDataPayload() { id = id };
                 }
             }
-            if (payload!=null)
+            if (payload!=null && payload.@params.quotes.Count>0)
             {
                 Send(JsonConvert.SerializeObject(payload));
             }
-
-            return ts;
         }
     }
 

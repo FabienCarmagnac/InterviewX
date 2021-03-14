@@ -73,8 +73,8 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
             int user_waittime_in_ms = 10*1000; // wait before retry in case something is wrong
             int user_maxTickers = 5000; // max capacity of this component 
             int user_maxRequests = 10; // max ws request  in //
-            int user_maxBufferSize = 100; // very small to see the effects
-            int user_saveHeadAfterMs= 20000000; // very small to see the effects
+            int user_maxBufferSize = 5; // very small to see the effects
+            int user_saveHeadAfterMs= 2000; // very small to see the effects
             int user_wait_time_before_flush_in_secs = 5;
             int user_nb_io_thread=5;
             int user_max_nb_quotes_per_message=50;

@@ -53,7 +53,7 @@ namespace Xbto.MarketConnector.Deribit
         }
         public QuoteData(byte[] d)
         {
-            int offset=0;
+            int offset =0;
             timestamp = BitConverter.ToInt64(d, offset);
             offset += 8;
             best_bid_price = d.ToDecimal(ref offset);
