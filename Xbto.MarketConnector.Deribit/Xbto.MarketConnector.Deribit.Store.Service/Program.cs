@@ -28,9 +28,9 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
 
             string user_url = DeribitInfo.deribit_url_test;
             int user_fetch_freq_ms = 60*60*1000; // refresh referential all hours, 
-            int user_waittime_in_ms = 10*000; // wait before retry in case something is wrong
-            int user_maxTickers = 250; // max capacity of this component 
-            int user_maxRequests = 5; // max ws request  in //
+            int user_waittime_in_ms = 10*1000; // wait before retry in case something is wrong
+            int user_maxTickers = 5000; // max capacity of this component 
+            int user_maxRequests = 10; // max ws request  in //
             int user_maxBufferSize = 10; // very small to see the effects
             int user_saveHeadAfterMs= 5000; // very small to see the effects
             int user_wait_time_before_flush_in_secs = 30;
@@ -44,7 +44,7 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
 
             var dataStore = new DataStore(ctrler, user_nb_io_thread, user_wait_time_before_flush_in_secs, user_maxBufferSize, user_saveHeadAfterMs);
 
-            var only_btc = new[] { "BTC-PERPETUAL" };
+            string[] only_btc = null;// new[] { "BTC-PERPETUAL" };
             var marketDataFetcher = new MarketDataFetcher(user_url, ctrler, instruFetcher, dataStore, only_btc, user_maxTickers, user_maxRequests);// new[] { "BTC-PERPETUAL" });
 
             ctrler.TakeControl(dataStore);

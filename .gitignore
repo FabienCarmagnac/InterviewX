@@ -11,3 +11,4 @@
 *netcoreapp*
 /Xbto.MarketConnector.Deribit/websocket-sharp/obj/Debug/websocket-sharp.csproj.FileListAbsolute.txt
 /Xbto.MarketConnector.Deribit/websocket-sharp/obj/Debug/websocket-sharp.csproj.FileListAbsolute.txt
+/Xbto.MarketConnector.Deribit/websocket-sharp/obj/*

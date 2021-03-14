@@ -93,6 +93,7 @@ namespace Xbto.MarketConnector.Deribit
                             Console.WriteLine("InstrumentFetcher: ws OnMessage EXCEPT: " + ex.ToString());
                         }finally
                         {
+                            //Console.WriteLine("InstrumentFetcher: ws OnMessage ");
                             er.Signal();
                         }
                     };
@@ -113,7 +114,6 @@ namespace Xbto.MarketConnector.Deribit
 
                     do
                     {
-
                         ws.Connect();
 
                         foreach (var cur in ProtocolVariableCur)
@@ -122,12 +122,11 @@ namespace Xbto.MarketConnector.Deribit
                                 .Replace("{{currency}}", cur)
                                 .Replace("{{id}}", DeribitInfo.NextIndex.ToString());
 
-                            Console.WriteLine("InstrumentFetcher: request sent : "+req);
+                            Console.WriteLine("InstrumentFetcher: request sent : " + req);
                             ws.Send(req);
                         }
 
-                        //ws.Close();
-
+                            
                         if (!er.Wait(_waittime_in_ms))
                         {
                             Console.WriteLine("InstrumentFetcher: timeout, will retry later");
