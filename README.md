@@ -17,7 +17,7 @@ The data is store as binary-fixed-size object in file.
 
  * Url is /HistoricalData
  * To subscribe, send this :
- 
+ ```
 {
   "jsonrpc": "2.0",
   "id": 152,
@@ -28,9 +28,48 @@ The data is store as binary-fixed-size object in file.
     "end_timestamp": 1615721186053261
   }
 }
-
-
-
+```
+Then, the client should receive an ack message:
+```
+{
+  "jsonrpc": "2.0",
+  "id": 152,
+  "method": "public/get_historical_data",
+  "params": {
+    "status_code": 0
+  }
+}
+```
+ * status_code=1 means instrument is unknown and can not be subscribed. Ws is closed after that, nothing is expected to be received after this message.
+ * status_code=0 means instrument is known and can be subscribed.
+ 
+ Following ack with status_code=0, the client should receive some data as following :
+ ```
+ {
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "public/get_historical_data",
+  "params": {
+    "quotes": [
+      {
+        "timestamp": 1615635467369166,
+        "best_bid_price": 124.5,
+        "best_bid_amount": 120.0,
+        "best_ask_price": 124.9,
+        "best_ask_amount": 100.0
+      },
+      {
+        "timestamp": 1615635469369166,
+        "best_bid_price": 124.0,
+        "best_bid_amount": 130.0,
+        "best_ask_price": 124.7,
+        "best_ask_amount": 90.0
+      }
+    ]
+  }
+}
+```
+ 
  
  
 # Limitations 
