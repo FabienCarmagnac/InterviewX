@@ -52,15 +52,15 @@ Ensure a server is running, then run :
 
 See service program:
 
-> int usr_fetch_freq_ms = 60*60*1000; // refresh referential period in ms
-> int user_waittime_in_ms = 10*1000; //referential wait time before retry after fatal error 
-> int user_maxTickers = 5000; // max number of tickers this component can handle
-> int user_maxRequests = 10; // max ws request in //
-> int user_maxBufferSize = 5; // maximum buffer size per instrument. When reached, data can still be enqueued but a storage request is sent.
-> int user_saveHeadAfterMs= 2000; // maximum wait time before deciding to force store a queue when it does not tick that much
-> int user_wait_time_before_flush_in_secs = 5; // in seconds : 
-> int user_nb_io_thread=5; // number of threads which read/write quote data files
-> int user_max_nb_quotes_per_message=50; // size of blocks sent in 1 message to the client.
+ * int usr_fetch_freq_ms = 60*60*1000; // refresh referential period in ms
+ * int user_waittime_in_ms = 10*1000; //referential wait time before retry after fatal error 
+ * int user_maxTickers = 5000; // max number of tickers this component can handle
+ * int user_maxRequests = 10; // max ws request in //
+ * int user_maxBufferSize = 5; // maximum buffer size per instrument. When reached, data can still be enqueued but a storage request is sent.
+ * int user_saveHeadAfterMs= 2000; // maximum wait time before deciding to force store a queue when it does not tick that much
+ * int user_wait_time_before_flush_in_secs = 5; // in seconds : 
+ * int user_nb_io_thread=5; // number of threads which read/write quote data files
+ * int user_max_nb_quotes_per_message=50; // number of quote data in 1 block when replying to the client.
             
 # Thanks to
 
