@@ -6,7 +6,7 @@ Record market data coming from D. broker.
 
 # Pinciples
 
-The quotes are collected with sereral parallel webrequests.
+The quotes are collected with several parallel webrequests.
 All the deserialized data is added to a single queue which are consumed by a unique thread.
 This consumer thread - only, and that's why it is unique - routes the data to a per-instrument queue.
 When a queue seems ready to be flushed (several crits), the IO thread handling this instrument removes - all or part of - the in-memory data after it got the confirmation the data has been written to the per-instrument file.
