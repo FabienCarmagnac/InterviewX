@@ -1,9 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace Xbto.MarketConnector.Deribit
 {
+    public static class LLog
+    {
+        private static void BaseLog(string level, string msg) 
+        {
+            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()}|{level}|{Thread.CurrentThread.ManagedThreadId:0000}|{msg}"); 
+        }
+
+        public static void Info(string msg) { BaseLog("INFO", msg); }
+        public static void Err(string msg)  { BaseLog("ERR ", msg); }
+        public static void Wng(string msg) { BaseLog("WARN", msg); }
+        public static void Debug(string msg) { BaseLog("DEBG", msg); }
+    }
+
     public static class Helper
     {
         // deribit ts vs datetime

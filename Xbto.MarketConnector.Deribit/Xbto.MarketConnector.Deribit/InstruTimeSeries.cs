@@ -61,9 +61,9 @@ namespace Xbto.MarketConnector.Deribit
             lock (TimeData)
             {
                 if (TimeData.Count == 0)
-                    Console.WriteLine($"GetSnapshot: 0 elem");
+                    LLog.Info($"GetSnapshot: 0 elem");
                 else
-                    Console.WriteLine($"GetSnapshot: TimeData {TimeData[0]} => {TimeData.Last()}");
+                    LLog.Info($"GetSnapshot: TimeData {TimeData[0]} => {TimeData.Last()}");
 
                 int bx =-1, ex=-1;
                 for(int i=0;i<TimeData.Count;++i)

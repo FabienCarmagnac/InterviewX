@@ -9,18 +9,18 @@ namespace Xbto.MarketConnector.Deribit.Test
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("=== BEGIN TESTS ===");
+            LLog.Info("=== BEGIN TESTS ===");
             TestDateTime();
             TestSerialDecimal();
             TestSerialQuoteData();
             TestInstruFetcher();
             TestDataStore();
-            Console.WriteLine("=== END TESTS ===");
-            Console.WriteLine("\nIf no ugly messages have been displayed above, tests can be considered OK\n");
+            LLog.Info("=== END TESTS ===");
+            LLog.Info("\n\nIf no ugly messages (eg stacktraces) have been displayed above, tests can be considered OK\n\n");
         }
         static void TestSerialDecimal()
         {
-            Console.WriteLine("=== BEGIN TESTS TestSerialDecimal ===");
+            LLog.Info("=== BEGIN TESTS TestSerialDecimal ===");
 
             decimal d = 123456789123456789;
 
@@ -33,7 +33,7 @@ namespace Xbto.MarketConnector.Deribit.Test
             decimal d2 = b0.ToDecimal();
 
             Debug.Assert(d2==d);
-            Console.WriteLine("=== END TESTS TestSerialDecimal ===");
+            LLog.Info("=== END TESTS TestSerialDecimal ===");
 
         }
 
@@ -41,7 +41,7 @@ namespace Xbto.MarketConnector.Deribit.Test
 
         static void TestSerialQuoteData()
         {
-            Console.WriteLine("=== BEGIN TESTS TestSerialQuoteData ===");
+            LLog.Info("=== BEGIN TESTS TestSerialQuoteData ===");
             decimal d = 123456789M;
 
             DateTime n = DateTime.UtcNow;
@@ -64,14 +64,14 @@ namespace Xbto.MarketConnector.Deribit.Test
             Debug.Assert(q2.best_bid_price == q.best_bid_price, "best_bid_price");
             Debug.Assert(q2.best_bid_amount == q.best_bid_amount, "best_bid_amount");
 
-            Console.WriteLine("=== END TESTS TestSerialQuoteData ===");
+            LLog.Info("=== END TESTS TestSerialQuoteData ===");
         
         }
 
 
         static void TestDateTime()
         {
-            Console.WriteLine("=== BEGIN TESTS TestDateTime ===");
+            LLog.Info("=== BEGIN TESTS TestDateTime ===");
             long dt = 1615745488608;
             var d = dt.ToDateTime();
             Debug.Assert(d.Year == 2021);
@@ -85,12 +85,12 @@ namespace Xbto.MarketConnector.Deribit.Test
             long ll = DateTime.UtcNow.ToDeribitTs();
 
 
-            Console.WriteLine("=== ENd TESTS TestDateTime ===");
+            LLog.Info("=== ENd TESTS TestDateTime ===");
         }
 
         static void TestInstruFetcher()
         {
-            Console.WriteLine("=== BEGIN TESTS TestInstruFetcher ===");
+            LLog.Info("=== BEGIN TESTS TestInstruFetcher ===");
 
             string user_url = DeribitInfo.deribit_url_test;
             int user_fetch_freq_ms = 100*1000;  // 100s
@@ -115,13 +115,13 @@ namespace Xbto.MarketConnector.Deribit.Test
             ctrler.WaitStop();
 
             Debug.Assert(size>10, "instrus");
-            Console.WriteLine("=== END TESTS TestInstruFetcher ===");
+            LLog.Info("=== END TESTS TestInstruFetcher ===");
 
         }
 
         static void TestDataStore()
         {
-            Console.WriteLine("=== BEGIN TESTS TestDataStore ===");
+            LLog.Info("=== BEGIN TESTS TestDataStore ===");
             AsyncController ctrler = new AsyncController();
 
             var ds = new DataStore(ctrler, 1, 1, 2, 100000);
@@ -139,7 +139,7 @@ namespace Xbto.MarketConnector.Deribit.Test
                 {
                     timestamp =  DateTime.UtcNow.ToDeribitTs()
                 };
-                //Console.WriteLine(q.timestamp);
+                //LLog.Info(q.timestamp);
                 last_ts.Add(q.timestamp);
                 st.AddNextQuote(q);
                 Thread.Sleep(100);
@@ -156,7 +156,7 @@ namespace Xbto.MarketConnector.Deribit.Test
 
             Debug.Assert(last != null, "last is null");
             Debug.Assert(last_ts.FindIndex(s => s==last.timestamp)>0 , "timestamp is not found");
-            Console.WriteLine("=== END TESTS TestDataStore ===");
+            LLog.Info("=== END TESTS TestDataStore ===");
 
 
         }

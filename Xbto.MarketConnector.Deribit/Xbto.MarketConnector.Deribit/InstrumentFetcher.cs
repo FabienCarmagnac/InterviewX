@@ -61,7 +61,7 @@ namespace Xbto.MarketConnector.Deribit
 
         public void RunSync()
         {
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: start");
+            LLog.Info($" InstrumentFetcher: start");
 
             const string ProtocolRequestPattern = @"{ ""jsonrpc"": ""2.0"", ""id"": {{id}},  ""method"": ""public/get_instruments"",  ""params"": { ""currency"": ""{{currency}}""}}";
             string[] ProtocolVariableCur = Enum.GetNames(typeof(Currency));
@@ -82,7 +82,7 @@ namespace Xbto.MarketConnector.Deribit
                             var raw = JsonConvert.DeserializeObject<InstruDefResponse>(e.Data);
                             if (raw.result != null)
                             {
-                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: ws {raw.result.Length} instrus received");
+                                LLog.Info($" InstrumentFetcher: ws {raw.result.Length} instrus received");
 
                                 foreach (var res in raw.result)
                                 {
@@ -92,7 +92,7 @@ namespace Xbto.MarketConnector.Deribit
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: ws OnMessage EXCEPT: " + ex.ToString());
+                            LLog.Err("InstrumentFetcher: ws OnMessage EXCEPT: " + ex.ToString());
                         }finally
                         {
                             //Console.WriteLine("InstrumentFetcher: ws OnMessage ");
@@ -101,7 +101,7 @@ namespace Xbto.MarketConnector.Deribit
                     };
                     ws.OnError += (sender, e) =>
                     {
-                        Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: ws OnError: " + e.ToString());
+                        LLog.Err("InstrumentFetcher: ws OnError: " + e.ToString());
                     };
                     ws.OnOpen += (sender, e) =>
                     {
@@ -124,14 +124,14 @@ namespace Xbto.MarketConnector.Deribit
                                 .Replace("{{currency}}", cur)
                                 .Replace("{{id}}", DeribitInfo.NextIndex.ToString());
 
-                            Console.WriteLine("InstrumentFetcher: request sent : " + req);
+                            LLog.Debug("InstrumentFetcher: request sent : " + req);
                             ws.Send(req);
                         }
 
                             
                         if (!er.Wait(_waittime_in_ms))
                         {
-                            Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: timeout, will retry later");
+                            LLog.Wng("InstrumentFetcher: timeout, will retry later");
                         }
                         else
                         {
@@ -142,7 +142,7 @@ namespace Xbto.MarketConnector.Deribit
 
                             if (news.Length != 0)
                             {
-                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: {news.Length} instru found");
+                                LLog.Info($" InstrumentFetcher: {news.Length} instru found");
                                 NewInstru?.Invoke(this, news);
                             }
 
@@ -150,7 +150,7 @@ namespace Xbto.MarketConnector.Deribit
                             var dels = tmp.Intersect(dico).Except(tmp).Select(s => s.Value).ToArray();
                             if (dels.Length != 0)
                             {
-                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: {news.Length} instru removed");
+                                LLog.Info($" InstrumentFetcher: {news.Length} instru removed");
                                 DelInstru?.Invoke(this, dels);
                             }
 
@@ -166,14 +166,14 @@ namespace Xbto.MarketConnector.Deribit
             }
             catch (Exception e)
             {
-                Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: EXCEPT " + e.ToString());
+                LLog.Err("InstrumentFetcher: EXCEPT " + e.ToString());
             }
-            Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: leaving main thread");
+            LLog.Debug("InstrumentFetcher: leaving main thread");
         }
 
         public void Stop()
         {
-            Console.WriteLine("{DateTime.UtcNow.ToDeribitTs()} InstrumentFetcher: stopping");
+            LLog.Info("InstrumentFetcher: stopping");
         }
     }
 }

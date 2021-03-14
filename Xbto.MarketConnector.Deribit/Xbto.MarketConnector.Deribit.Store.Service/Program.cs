@@ -73,8 +73,8 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
             int user_waittime_in_ms = 10*1000; // wait before retry in case something is wrong
             int user_maxTickers = 5000; // max capacity of this component 
             int user_maxRequests = 10; // max ws request  in //
-            int user_maxBufferSize = 5; // very small to see the effects
-            int user_saveHeadAfterMs= 2000; // very small to see the effects
+            int user_maxBufferSize = 50; // very small to see the effects
+            int user_saveHeadAfterMs= 30*1000; // very small to see the effects
             int user_wait_time_before_flush_in_secs = 5;
             int user_nb_io_thread=5;
             int user_max_nb_quotes_per_message=50;
@@ -87,7 +87,10 @@ namespace Xbto.MarketConnector.Deribit.Store.Service
 
             var dataStore = new DataStore(ctrler, user_nb_io_thread, user_wait_time_before_flush_in_secs, user_maxBufferSize, user_saveHeadAfterMs);
 
-            string[] only_btc = new[] { "BTC-PERPETUAL" };
+            string[] only_btc = (args.Length == 1)
+                ? new[] { args[0] }
+                : null;
+
             var marketDataFetcher = new MarketDataFetcher(user_url, ctrler, instruFetcher, dataStore, only_btc, user_maxTickers, user_maxRequests);// new[] { "BTC-PERPETUAL" });
 
             var historicalFetcher = new HistoricalDataFetcher(ctrler, dataStore, user_max_nb_quotes_per_message);

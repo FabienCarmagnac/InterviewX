@@ -69,14 +69,14 @@ namespace Xbto.MarketConnector.Deribit
             };
 
             // send anyway
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : acking client");
+            LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : acking client");
             var ackbin = JsonConvert.SerializeObject(ack);
             Send(ackbin);
 
             // if error  => bye !
             if (status_code !=0)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : closing ERROR " + msg);
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : closing ERROR " + msg);
                 Close();
                 return;
             }
@@ -86,7 +86,7 @@ namespace Xbto.MarketConnector.Deribit
             long begin = par.begin_timestamp;
             long end = par.end_timestamp;
 
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : client request {begin} => {end}");
+            LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : client request {begin} => {end}");
 
             // 1 : prepare the recording of what we could miss during the file access
 
@@ -98,7 +98,7 @@ namespace Xbto.MarketConnector.Deribit
 
                 if (q.timestamp > end)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : real time callback reached end");
+                    LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : real time callback reached end");
                     Interlocked.Exchange(ref _stop, 1);
                 }else
                     cq.Enqueue(q);
@@ -118,10 +118,10 @@ namespace Xbto.MarketConnector.Deribit
             });
             if (buffer.Count == 0)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : buffer empty");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : buffer empty");
             }
             else 
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : buffer gave {buffer.Count} elements [{buffer.First()} => {buffer.Last()}]");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : buffer gave {buffer.Count} elements [{buffer.First()} => {buffer.Last()}]");
 
             try
             {
@@ -132,13 +132,13 @@ namespace Xbto.MarketConnector.Deribit
                 long first = 0;
 
                 SendQuoteData(h.id, 0, iis.GetHistoData(begin, end), out first, ref last_ts, ref sent); ///last_ts is 0 here because we know the data has been filtered                
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : histo data sent {sent}, {first} => {last_ts}");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : histo data sent {sent}, {first} => {last_ts}");
                 // now send the buffer : may be overlap with file 
                 SendQuoteData(h.id, last_ts, buffer, out first, ref last_ts, ref sent);
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : buffer data reached {sent}, {first} => {last_ts}");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : buffer data reached {sent}, {first} => {last_ts}");
 
                 // now send the RT container. can overlap !
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT begins");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : RT begins");
                 while (Interlocked.Read(ref _stop) == 0 && !_root.Stopper.StopRequested)
                 {
                     QuoteData qd;
@@ -146,7 +146,7 @@ namespace Xbto.MarketConnector.Deribit
                     {
                         if (qd.timestamp > end)
                         {
-                            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT end={end} < incoming={qd.timestamp}");
+                            LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : RT end={end} < incoming={qd.timestamp}");
                             break;
                         }
 
@@ -161,23 +161,23 @@ namespace Xbto.MarketConnector.Deribit
                     var dts = DateTime.UtcNow.ToDeribitTs();
                     if (dts > end) // now has passed end time. Leave because it is possible the feed will never give you a message with that condition !
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT end={end} < clock={dts}");
+                        LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : RT end={end} < clock={dts}");
                         break;
                     }
                 }
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} : RT ends, total {sent}");
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} : RT ends, total {sent}");
 
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} while sending : EXCEPT " + ex.ToString());
+                LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} while sending : EXCEPT " + ex.ToString());
             }
 
             // unsubscribe
             iis.OnNewQuoteData -= real_time_cb;
             Close();
 
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} HistoricalDataDistributor {instruname} id={h.id} DONE");
+            LLog.Info($" HistoricalDataDistributor {instruname} id={h.id} DONE");
 
 
         }
@@ -275,15 +275,15 @@ namespace Xbto.MarketConnector.Deribit
             var ws = new WebSocketServer("ws://127.0.0.1");
             ws.AddWebSocketService<HistoricalDataDistributor>(UrlPath, (h)=> 
             {
-                Console.WriteLine("HistoricalDataFetcher: connecting client ...");
+                LLog.Info("HistoricalDataFetcher: connecting client ...");
                 h.SetRoot(this); 
             });
 
-            Console.WriteLine("HistoricalDataFetcher: starting");
+            LLog.Info("HistoricalDataFetcher: starting");
             ws.Start();
             while (Stopper.WaitAndContinue(5000)) ;
             ws.Stop();
-            Console.WriteLine("HistoricalDataFetcher: stopping");
+            LLog.Info("HistoricalDataFetcher: stopping");
 
         }
 

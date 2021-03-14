@@ -134,7 +134,7 @@ namespace Xbto.MarketConnector.Deribit
          * */
         public void RunSync()
         {
-            Console.WriteLine("MarketDataFetcher: starting");
+            LLog.Info("MarketDataFetcher: starting");
             QuoteDataResponse.DataWithInstru d;
             int periodOfDisplayInSeconds = 5;
             
@@ -148,7 +148,7 @@ namespace Xbto.MarketConnector.Deribit
                 {
                     lastsnap = now;
                     var pc = _price_counter;
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", pc.Select((s,i)=>$"#{i}:{s}")));
+                    LLog.Info($" MarketDataFetcher: STATS ticks waiting {_incomingData.Count}, done {ticked}, out {dispatched} |  " + string.Join(" ", pc.Select((s,i)=>$"#{i}:{s}")));
 
                     foreach(var ws in _ws)
                     {
@@ -166,7 +166,7 @@ namespace Xbto.MarketConnector.Deribit
                     }
                     if(bi.Total==0)
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: INSTRU {d.instrument_name} : first price [{d.best_bid_price} | {d.best_ask_price}]");
+                        LLog.Info($" MarketDataFetcher: INSTRU {d.instrument_name} : first price [{d.best_bid_price} | {d.best_ask_price}]");
                     }
                     bi.AddNextQuote(d);
                     ++dispatched;
@@ -177,7 +177,7 @@ namespace Xbto.MarketConnector.Deribit
                 }
 
             }
-            Console.WriteLine("MarketDataFetcher: leaving main thread");
+            LLog.Info("MarketDataFetcher: leaving main thread");
 
 
         }
@@ -195,13 +195,13 @@ namespace Xbto.MarketConnector.Deribit
 
                     if (ws != null && ws.ReadyState == WebSocketState.Open)
                     {
-                        Console.WriteLine("MarketDataFetcher: closing ws");
+                        LLog.Info("MarketDataFetcher: closing ws");
                         ws.Close();
                     }
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("MarketDataFetcher: EXCEPT while closing ws : " + e.ToString());
+                    LLog.Info("MarketDataFetcher: EXCEPT while closing ws : " + e.ToString());
 
                 }
             }
@@ -215,7 +215,7 @@ namespace Xbto.MarketConnector.Deribit
             try
             {
                 var wss = ImmutableList.CreateBuilder<WebSocket>();
-                Console.WriteLine("MarketDataFetcher: sending quote request for " + instru.Length + " instrus");
+                LLog.Info("MarketDataFetcher: sending quote request for " + instru.Length + " instrus");
                 int step = instru.Length / _maxRequests + (instru.Length % _maxRequests == 0 ? 0 : 1);
                 int iix = 0;
                 long[] price_counter = new long[_maxRequests];
@@ -249,51 +249,51 @@ namespace Xbto.MarketConnector.Deribit
                                 QuoteDataResponse.Ack ack = JsonConvert.DeserializeObject<QuoteDataResponse.Ack>(e.Data);
                                 if (ack == null || ack.result==null)
                                 {
-                                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: ws {ix} NOT AN ACK :\n{e.Data}");
+                                    LLog.Info($" MarketDataFetcher: ws {ix} NOT AN ACK :\n{e.Data}");
                                     price_counter[ix] = -1;
                                 }
                                 else
                                 {
-                                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} ack received with {ack.result.Count} instrus confirmed");
+                                    LLog.Info($" MarketDataFetcher: # {id} ws {ix} ack received with {ack.result.Count} instrus confirmed");
                                     price_counter[ix] = 0;
                                 }
                                 return;
 
                             }
                             
-                            //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # quote ts={obj.@params.data.timestamp}");
+                            //LLog.Info($" MarketDataFetcher: # quote ts={obj.@params.data.timestamp}");
 
                             _incomingData.Enqueue(obj.@params.data);
                             if(price_counter[ix]++==0)
                             {
-                                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} first price received");
+                                LLog.Info($" MarketDataFetcher: # {id} ws {ix} first price received");
                             }
 
                             _waitData.Set();
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} except " + ex.ToString());
+                            LLog.Info($" MarketDataFetcher: # {id} ws {ix} except " + ex.ToString());
                         }
                     };
                     ws.OnError += (sender, e) =>
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} error " + e.ToString());
+                        LLog.Info($" MarketDataFetcher: # {id} ws {ix} error " + e.ToString());
                     };
                     ws.OnOpen += (sender, e) =>
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} open");
+                        LLog.Info($" MarketDataFetcher: # {id} ws {ix} open");
                     };
                     ws.OnClose += (sendr, e) =>
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} closed");
+                        LLog.Info($" MarketDataFetcher: # {id} ws {ix} closed");
                     };
 
                     ws.Connect();
-                    //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} msg " + strmsg);
+                    //LLog.Info($" MarketDataFetcher: # {id} ws {ix} msg " + strmsg);
 
                     ws.Send(strmsg);
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {id} ws {ix} quote sent");
+                    LLog.Info($" MarketDataFetcher: # {id} ws {ix} quote sent");
                 }//while
 
                 KillWs();
@@ -303,7 +303,7 @@ namespace Xbto.MarketConnector.Deribit
             }
             catch (Exception e)
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: # {iid} SwitchFeeder EXCEPT " + e.ToString());
+                LLog.Info($" MarketDataFetcher: # {iid} SwitchFeeder EXCEPT " + e.ToString());
 
             }
 
@@ -321,25 +321,25 @@ namespace Xbto.MarketConnector.Deribit
               //  Console.Write("MarketDataFetcher: new instru " + ee.instrument_name + " ... ");
                 if (!instru.ContainsKey(ee.instrument_name) && (_wanted.Length == 0 || _wanted.Contains(ee.instrument_name)))
                 {
-                //    Console.WriteLine("added");
+                //    LLog.Info("added");
 
                     instru.Add(ee.instrument_name, _dataStore.GetOrCreateInstruTimeSeries(ee));
                     if (instru.Count >= _maxTickers)
                     {
-                        Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} MarketDataFetcher: maximum {_maxTickers} reached");
+                        LLog.Info($" MarketDataFetcher: maximum {_maxTickers} reached");
                         break;
                     }
                 }
                 else
                 {
-                    //Console.WriteLine("filtered");
+                    //LLog.Info("filtered");
                     ++filtered;
                 }
             }
 
             var bim = ImmutableDictionary.CreateBuilder<string, InstruTimeSeries>();
             bim.AddRange(instru.AsEnumerable());
-            Console.Write($"MarketDataFetcher: has {bim.Count} instruments, {filtered} filtered" );
+            LLog.Info($"MarketDataFetcher: has {bim.Count} instruments, {filtered} filtered" );
 
             Interlocked.Exchange(ref _instru , bim.ToImmutable());
             SwitchFeeder(instru.Values.ToArray());
@@ -350,7 +350,7 @@ namespace Xbto.MarketConnector.Deribit
             var instru = new Dictionary<string, InstruTimeSeries>(_instru);
             foreach (var ee in e)
             {
-                Console.WriteLine("MarketDataFetcher: instrument removed " + ee.instrument_name);
+                LLog.Info("MarketDataFetcher: instrument removed " + ee.instrument_name);
                 instru.Remove(ee.instrument_name);
             }
             var bim = ImmutableDictionary.CreateBuilder<string, InstruTimeSeries>();
@@ -362,7 +362,7 @@ namespace Xbto.MarketConnector.Deribit
 
         public void Stop()
         {
-            Console.WriteLine("MarketDataFetcher: stopping");
+            LLog.Info("MarketDataFetcher: stopping");
 
             _fetcher.NewInstru -= OnNewInstru;
             _fetcher.DelInstru -= OnDelInstru;
@@ -370,7 +370,7 @@ namespace Xbto.MarketConnector.Deribit
             _waitData.Set();
 
             KillWs();
-            Console.WriteLine("MarketDataFetcher: stopped");
+            LLog.Info("MarketDataFetcher: stopped");
 
         }
 

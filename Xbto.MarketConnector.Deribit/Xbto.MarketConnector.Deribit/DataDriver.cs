@@ -33,13 +33,14 @@ namespace Xbto.MarketConnector.Deribit
                 var offset = fic.Seek(0, SeekOrigin.End);
                 if (offset==0)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} is a new instrument");
+                    
+                    LLog.Info($"DataDriver: {_instruName} is a new instrument");
                     // empty
                     return;
                 }
                 if(offset % QuoteData.SizeInBytes != 0)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: data corruped in {_instruName} (brutal stop ?), I will align the data for you");
+                    LLog.Wng($"DataDriver: data corruped in {_instruName} (brutal stop ?), I will align the data for you");
                     offset = fic.Seek(-offset % QuoteData.SizeInBytes, SeekOrigin.End);
                     byte[] b = new byte[offset];
                     fic.Read(b, 0, (int)offset);
@@ -56,7 +57,7 @@ namespace Xbto.MarketConnector.Deribit
 
                 offset = fic.Seek(-QuoteData.SizeInBytes, SeekOrigin.End); // if not empty and aligned on size, go backwards and read last one
                 _last = QuoteData.FromBinStream(fic);
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} has {(offset/ QuoteData.SizeInBytes)+1} elements in store, last ts={_last.timestamp}");
+                LLog.Info($"DataDriver: {_instruName} has {(offset/ QuoteData.SizeInBytes)+1} elements in store, last ts={_last.timestamp}");
 
             }
 
@@ -66,7 +67,7 @@ namespace Xbto.MarketConnector.Deribit
         {
             StrongBox<byte[]> s = new StrongBox<byte[]>();
             AutoResetEvent ev = new AutoResetEvent(false);
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} reading full file ...");
+            LLog.Info($"DataDriver: {_instruName} reading full file ...");
             _proc.Enqueue(() =>
             {
                 try
@@ -87,7 +88,7 @@ namespace Xbto.MarketConnector.Deribit
             
             if(!ev.WaitOne(10000))// 10s
             {
-                Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} ERROR : read timeout");
+                LLog.Err($"DataDriver: {_instruName} read timeout");
                 yield break;
             }
 
@@ -95,7 +96,7 @@ namespace Xbto.MarketConnector.Deribit
             int offset = 0;
             int n = s.Value.Length;
             
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} reading full file : got {n/QuoteData.SizeInBytes} elements");
+            LLog.Info($"DataDriver: {_instruName} reading full file : got {n/QuoteData.SizeInBytes} elements");
             
             while (offset < n)
             {
@@ -107,7 +108,7 @@ namespace Xbto.MarketConnector.Deribit
                     yield break;
                 yield return qd;
             }
-            Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} SENT");
+            LLog.Info($"DataDriver: {_instruName} SENT");
 
             yield break;
         }
@@ -119,12 +120,12 @@ namespace Xbto.MarketConnector.Deribit
         internal void SendToStore(List<QuoteData> timeData, InstruTimeSeries client)
         {
             var n = timeData == null ? 0 : timeData.Count;
-          //  Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} requested to save {n} quotes");
+          //  LLog.Info($"DataDriver: {_instruName} requested to save {n} quotes");
             _proc.Enqueue(() =>
             {
                 if (timeData == null || timeData.Count == 0)
                 {
-                    Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: WARN {_instruName} nothing to save");
+                    LLog.Wng($"DataDriver: {_instruName} nothing to save");
                     client.DataHaveBeenStoredTillIndex(0);
                     return;
                 }
@@ -141,7 +142,7 @@ namespace Xbto.MarketConnector.Deribit
                     fic.Write(memstr.ToArray());
                 }
                 client.DataHaveBeenStoredTillIndex(timeData.Count());
-                //Console.WriteLine($"{DateTime.UtcNow.ToDeribitTs()} DataDriver: {_instruName} requested to save {n} quotes ==> DONE");
+                //LLog.Info($"DataDriver: {_instruName} requested to save {n} quotes ==> DONE");
 
             });
             
