@@ -52,8 +52,8 @@ Ensure a server is running, then run :
 
 See service program:
 
- * int usr_fetch_freq_ms = 60*60*1000; // refresh referential period in ms
- * int user_waittime_in_ms = 10*1000; //referential wait time before retry after fatal error 
+ * int usr_fetch_freq_ms = 60x60x1000; // refresh referential period in ms
+ * int user_waittime_in_ms = 10x1000; //referential wait time before retry after fatal error 
  * int user_maxTickers = 5000; // max number of tickers this component can handle
  * int user_maxRequests = 10; // max ws request in //
  * int user_maxBufferSize = 5; // maximum buffer size per instrument. When reached, data can still be enqueued but a storage request is sent.
